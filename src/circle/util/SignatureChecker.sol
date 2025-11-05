@@ -59,9 +59,8 @@ library SignatureChecker {
     {
         (bool success, bytes memory result) =
             signer.staticcall(abi.encodeWithSelector(IERC1271.isValidSignature.selector, digest, signature));
-        return
-            (success && result.length >= 32
-                    && abi.decode(result, (bytes32)) == bytes32(IERC1271.isValidSignature.selector));
+        return (success && result.length >= 32
+                && abi.decode(result, (bytes32)) == bytes32(IERC1271.isValidSignature.selector));
     }
 
     /**
