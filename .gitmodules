@@ -1,0 +1,15 @@
+[submodule "lib/forge-std"]
+	path = lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
+[submodule "lib/stablecoin-evm"]
+	path = lib/stablecoin-evm
+	url = https://github.com/circlefin/stablecoin-evm
+[submodule "lib/usdc-bridge"]
+	path = lib/usdc-bridge
+	url = https://github.com/matter-labs/usdc-bridge
+[submodule "lib/openzeppelin-contracts"]
+	path = lib/openzeppelin-contracts
+	url = https://github.com/openzeppelin/openzeppelin-contracts
+[submodule "lib/openzeppelin-contracts-upgradeable"]
+	path = lib/openzeppelin-contracts-upgradeable
+	url = https://github.com/openzeppelin/openzeppelin-contracts-upgradeable
