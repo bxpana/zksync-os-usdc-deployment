@@ -42,14 +42,14 @@ We vendor minimal copies of the Circle FiatToken stack (`src/circle`) and the Ma
 
 ## Environment Variables
 
-The scripts are driven entirely through environment variables. A starter `.env.example` file is available in the repository root—copy it to `.env`, fill in the values, and run `source .env` before executing the scripts. **Private keys must be supplied without a `0x` prefix.**
+The scripts are driven entirely through environment variables. A starter `.env.example` file is available in the repository root—copy it to `.env`, fill in the values, and run `source .env` before executing the scripts.
 
 ### Required keys
 
 | Variable | Description |
 | --- | --- |
-| `DEPLOYER_PRIVATE_KEY` | Hex private key for the deployer (supply without the `0x` prefix). Required for all deployment transactions. |
-| `L1_USDC_BRIDGE_OWNER_PRIVATE_KEY` | Hex private key (without the `0x` prefix) that owns the L1 USDC bridge proxy and can register new chains. |
+| `DEPLOYER_PRIVATE_KEY` | Hex private key for the deployer (supply with the `0x` prefix). Required for all deployment transactions. |
+| `L1_USDC_BRIDGE_OWNER_PRIVATE_KEY` | Hex private key (with the `0x` prefix) that owns the L1 USDC bridge proxy and can register new chains. |
 
 ### SignatureChecker Deployment (`DeploySignatureChecker.s.sol`)
 
