@@ -14,7 +14,7 @@ interface FiatToken {
 
 /// @notice Bridges USDC to an ETH-based zkSync hyperchain using the shared bridge.
 /// @dev The script requires the following env vars:
-///        - DEPLOYER_PRIVATE_KEY: signer that holds USDC and pays the ETH cost
+///        - DEPLOYER_PRIVATE_KEY (or DEPLOYER_ADDRESS when using --account): signer that holds USDC and pays the ETH cost
 ///        - USDC_BRIDGE_AMOUNT (optional, default 1e6 = 1 USDC)
 ///        - L2_CHAIN_ID: hyperchain id to target
 ///        - ETH_BRIDGE_L2_GAS_LIMIT (optional, default 450_000)
@@ -36,21 +36,25 @@ contract BridgeUsdcToEthChain is Script {
         address l1UsdcBridge;
         address usdc;
         address recipient;
+        address broadcaster;
         uint256 deployerKey;
     }
 
     function run() external {
         Config memory cfg = _loadConfig();
-        address broadcaster = vm.addr(cfg.deployerKey);
         console.log("USDC amount:", cfg.usdcAmount);
-        console.log("Sender:", broadcaster);
+        console.log("Sender:", cfg.broadcaster);
         console.log("Target hyperchain:", cfg.chainId);
 
-        vm.startBroadcast(cfg.deployerKey);
+        if (cfg.deployerKey != 0) {
+            vm.startBroadcast(cfg.deployerKey);
+        } else {
+            vm.startBroadcast();
+        }
 
-        _ensureUsdcAllowance(cfg, broadcaster);
+        _ensureUsdcAllowance(cfg, cfg.broadcaster);
 
-        address recipient = cfg.recipient == address(0) ? broadcaster : cfg.recipient;
+        address recipient = cfg.recipient == address(0) ? cfg.broadcaster : cfg.recipient;
         _bridge(cfg, recipient);
 
         vm.stopBroadcast();
@@ -95,7 +99,7 @@ contract BridgeUsdcToEthChain is Script {
     }
 
     function _loadConfig() private returns (Config memory cfg) {
-        cfg.deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
+        cfg.deployerKey = vm.envOr("DEPLOYER_PRIVATE_KEY", uint256(0));
         cfg.chainId = vm.envUint("L2_CHAIN_ID");
         cfg.usdcAmount = vm.envOr("USDC_BRIDGE_AMOUNT", uint256(1_000_000)); // 1 USDC
         cfg.l2GasLimit = vm.envOr("ETH_BRIDGE_L2_GAS_LIMIT", uint256(450_000));
@@ -110,6 +114,11 @@ contract BridgeUsdcToEthChain is Script {
 
         cfg.usdc = vm.envAddress("L1_USDC_ADDRESS");
         require(cfg.usdc != address(0), "USDC address missing");
+
+        cfg.broadcaster = cfg.deployerKey != 0
+            ? vm.addr(cfg.deployerKey)
+            : vm.envOr("DEPLOYER_ADDRESS", address(0));
+        require(cfg.broadcaster != address(0), "Set DEPLOYER_PRIVATE_KEY or DEPLOYER_ADDRESS");
 
         uint256 baseCost = IBridgehub(cfg.bridgehub)
             .l2TransactionBaseCost(cfg.chainId, cfg.gasPrice, cfg.l2GasLimit, cfg.l2GasPerPubdata);

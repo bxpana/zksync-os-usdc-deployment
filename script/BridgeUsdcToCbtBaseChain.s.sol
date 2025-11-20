@@ -16,7 +16,7 @@ interface FiatToken {
 /// @notice Bridges USDC to a hyperchain whose base token is not ETH (e.g. CBT chains).
 /// @dev Requires base token approvals prior to calling the bridgehub.
 ///      Environment variables:
-///        - DEPLOYER_PRIVATE_KEY
+///        - DEPLOYER_PRIVATE_KEY (or DEPLOYER_ADDRESS when using --account)
 ///        - USDC_BRIDGE_AMOUNT (optional, default 1e6)
 ///        - CBT_BASE_TOKEN_ADDRESS
 ///        - CBT_BRIDGE_MINT_VALUE (optional, default 10 ether)
@@ -37,22 +37,26 @@ contract BridgeUsdcToCbtBaseChain is Script {
         address usdc;
         address recipient;
         uint256 deployerKey;
+        address broadcaster;
     }
 
     function run() external {
         Config memory cfg = _loadConfig();
-        address broadcaster = vm.addr(cfg.deployerKey);
         console.log("USDC amount:", cfg.usdcAmount);
-        console.log("Sender:", broadcaster);
+        console.log("Sender:", cfg.broadcaster);
         console.log("Base token:", cfg.baseToken);
         console.log("Target hyperchain:", cfg.chainId);
 
-        vm.startBroadcast(cfg.deployerKey);
+        if (cfg.deployerKey != 0) {
+            vm.startBroadcast(cfg.deployerKey);
+        } else {
+            vm.startBroadcast();
+        }
 
-        _ensureAllowance(cfg.baseToken, cfg.mintValue, cfg.sharedBridge, broadcaster, false);
-        _ensureAllowance(cfg.usdc, cfg.usdcAmount, cfg.l1UsdcBridge, broadcaster, true);
+        _ensureAllowance(cfg.baseToken, cfg.mintValue, cfg.sharedBridge, cfg.broadcaster, false);
+        _ensureAllowance(cfg.usdc, cfg.usdcAmount, cfg.l1UsdcBridge, cfg.broadcaster, true);
 
-        address recipient = cfg.recipient == address(0) ? broadcaster : cfg.recipient;
+        address recipient = cfg.recipient == address(0) ? cfg.broadcaster : cfg.recipient;
         _bridge(cfg, recipient);
 
         vm.stopBroadcast();
@@ -102,7 +106,7 @@ contract BridgeUsdcToCbtBaseChain is Script {
     }
 
     function _loadConfig() private returns (Config memory cfg) {
-        cfg.deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
+        cfg.deployerKey = vm.envOr("DEPLOYER_PRIVATE_KEY", uint256(0));
         cfg.chainId = vm.envUint("L2_CHAIN_ID");
         cfg.usdcAmount = vm.envOr("USDC_BRIDGE_AMOUNT", uint256(1_000_000));
         cfg.mintValue = vm.envOr("CBT_BRIDGE_MINT_VALUE", uint256(10 ether));
@@ -124,5 +128,10 @@ contract BridgeUsdcToCbtBaseChain is Script {
         require(cfg.baseToken != address(0), "Base token address missing");
 
         cfg.recipient = vm.envOr("CBT_BRIDGE_RECIPIENT", address(0));
+
+        cfg.broadcaster = cfg.deployerKey != 0
+            ? vm.addr(cfg.deployerKey)
+            : vm.envOr("DEPLOYER_ADDRESS", address(0));
+        require(cfg.broadcaster != address(0), "Set DEPLOYER_PRIVATE_KEY or DEPLOYER_ADDRESS");
     }
 }
