@@ -51,6 +51,8 @@ The scripts are driven entirely through environment variables. A starter `.env.e
 | `DEPLOYER_PRIVATE_KEY` | Hex private key for the deployer (supply with the `0x` prefix). Required for all deployment transactions. |
 | `L1_USDC_BRIDGE_OWNER_PRIVATE_KEY` | Hex private key (with the `0x` prefix) that owns the L1 USDC bridge proxy and can register new chains. |
 
+You may use a Foundry keystore account instead of a raw key. Set `DEPLOYER_ACCOUNT` (and optionally `L1_USDC_BRIDGE_OWNER_ACCOUNT`) to target a named account; when absent, the scripts fall back to the corresponding `*_PRIVATE_KEY` value.
+
 ### SignatureChecker Deployment (`DeploySignatureChecker.s.sol`)
 
 | Variable | Description |
