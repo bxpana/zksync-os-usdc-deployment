@@ -10,8 +10,12 @@ contract DeploySignatureChecker is Script {
     string internal constant SIGNATURE_CHECKER_ARTIFACT = "out/SignatureChecker.sol/SignatureChecker.json";
 
     function run() external returns (address deployed) {
-        uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
-        vm.startBroadcast(deployerKey);
+        uint256 deployerKey = vm.envOr("DEPLOYER_PRIVATE_KEY", uint256(0));
+        if (deployerKey != 0) {
+            vm.startBroadcast(deployerKey);
+        } else {
+            vm.startBroadcast();
+        }
         deployed = vm.deployCode(SIGNATURE_CHECKER_ARTIFACT);
         vm.stopBroadcast();
 

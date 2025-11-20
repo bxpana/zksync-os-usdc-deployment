@@ -95,8 +95,13 @@ contract DeployZkSyncOsUSDC is Script, DeploymentUtils {
         address l2BridgeProxy;
     }
 
+    struct Signer {
+        uint256 key;
+        address addr;
+    }
+
     function run() external returns (DeploymentArtifacts memory deployed) {
-        uint256 deployerKey = _loadDeployerKey();
+        Signer memory signer = _loadDeployerSigner();
         Config memory cfg = _loadConfig();
 
         vm.label(cfg.proxyAdmin, "ProxyAdmin");
@@ -116,7 +121,11 @@ contract DeployZkSyncOsUSDC is Script, DeploymentUtils {
 
         deployed.signatureChecker = cfg.signatureChecker;
 
-        vm.startBroadcast(deployerKey);
+        if (signer.key != 0) {
+            vm.startBroadcast(signer.key);
+        } else {
+            vm.startBroadcast();
+        }
 
         deployed.fiatTokenImpl = cfg.existingFiatTokenImpl != address(0)
             ? cfg.existingFiatTokenImpl
@@ -146,8 +155,8 @@ contract DeployZkSyncOsUSDC is Script, DeploymentUtils {
                 address(new TransparentUpgradeableProxy(deployed.l2BridgeImpl, cfg.proxyAdmin, initData));
         }
 
-        _initialiseFiatToken(deployed, cfg);
-        _wireMasterMinter(deployed, cfg);
+        _initialiseFiatToken(deployed, cfg, signer.addr);
+        _wireMasterMinter(deployed, cfg, signer.addr);
         _assignTokenRoles(deployed, cfg);
         _finaliseAdmins(deployed, cfg);
 
@@ -160,16 +169,21 @@ contract DeployZkSyncOsUSDC is Script, DeploymentUtils {
         _logSummary(deployed, cfg);
     }
 
-    function _loadDeployerKey() private returns (uint256 deployerKey) {
-        deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
-        address deployerAddr = vm.addr(deployerKey);
-
-        vm.label(deployerAddr, "Deployer");
-
+    function _loadDeployerSigner() private returns (Signer memory signer) {
+        signer.key = vm.envOr("DEPLOYER_PRIVATE_KEY", uint256(0));
         address expectedDeployer = vm.envOr("DEPLOYER_ADDRESS", address(0));
-        if (expectedDeployer != address(0) && expectedDeployer != deployerAddr) {
-            revert("DEPLOYER_ADDRESS does not match provided key");
+
+        if (signer.key != 0) {
+            signer.addr = vm.addr(signer.key);
+            if (expectedDeployer != address(0) && expectedDeployer != signer.addr) {
+                revert("DEPLOYER_ADDRESS does not match provided key");
+            }
+        } else {
+            require(expectedDeployer != address(0), "Set DEPLOYER_PRIVATE_KEY or DEPLOYER_ADDRESS");
+            signer.addr = expectedDeployer;
         }
+
+        vm.label(signer.addr, "Deployer");
     }
 
     function _loadConfig() private returns (Config memory cfg) {
@@ -201,7 +215,9 @@ contract DeployZkSyncOsUSDC is Script, DeploymentUtils {
         cfg.initialBlacklist = vm.envOr("INITIAL_BLACKLIST", ",", new address[](0));
     }
 
-    function _initialiseFiatToken(DeploymentArtifacts memory deployed, Config memory cfg) private {
+    function _initialiseFiatToken(DeploymentArtifacts memory deployed, Config memory cfg, address deployerAddr)
+        private
+    {
         IFiatTokenV2_2 fiatToken = IFiatTokenV2_2(deployed.fiatTokenProxy);
 
         if (fiatToken.masterMinter() == address(0)) {
@@ -213,7 +229,7 @@ contract DeployZkSyncOsUSDC is Script, DeploymentUtils {
                 deployed.masterMinter,
                 cfg.pauser,
                 cfg.blacklister,
-                vm.addr(vm.envUint("DEPLOYER_PRIVATE_KEY"))
+                deployerAddr
             );
         }
 
@@ -251,9 +267,8 @@ contract DeployZkSyncOsUSDC is Script, DeploymentUtils {
         }
     }
 
-    function _wireMasterMinter(DeploymentArtifacts memory deployed, Config memory cfg) private {
+    function _wireMasterMinter(DeploymentArtifacts memory deployed, Config memory cfg, address deployerAddr) private {
         IMasterMinter masterMinter = IMasterMinter(deployed.masterMinter);
-        address deployerAddr = vm.addr(vm.envUint("DEPLOYER_PRIVATE_KEY"));
 
         if (masterMinter.owner() == cfg.governance) {
             console.log("MasterMinter already owned by governance, skipping wiring");

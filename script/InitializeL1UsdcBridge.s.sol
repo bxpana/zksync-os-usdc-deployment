@@ -11,12 +11,16 @@ interface IL1USDCBridgeGovernance {
 /// @dev Run this script against the L1 RPC endpoint once the L2 stack has been deployed.
 contract InitializeL1UsdcBridge is Script {
     function run() external {
-        uint256 proxyAdminKey = vm.envUint("L1_USDC_BRIDGE_OWNER_PRIVATE_KEY");
+        uint256 proxyAdminKey = vm.envOr("L1_USDC_BRIDGE_OWNER_PRIVATE_KEY", uint256(0));
         address l1Bridge = vm.envAddress("L1_USDC_BRIDGE_PROXY");
         uint256 l2ChainId = vm.envUint("L2_CHAIN_ID");
         address l2BridgeProxy = vm.envAddress("L2_USDC_BRIDGE_PROXY");
 
-        vm.startBroadcast(proxyAdminKey);
+        if (proxyAdminKey != 0) {
+            vm.startBroadcast(proxyAdminKey);
+        } else {
+            vm.startBroadcast();
+        }
         IL1USDCBridgeGovernance(l1Bridge).initializeChainGovernance(l2ChainId, l2BridgeProxy);
         vm.stopBroadcast();
 
